@@ -1,0 +1,6 @@
+./out
+./.vscode
+*.xlsx
+*.csv
+*.pdf
+
