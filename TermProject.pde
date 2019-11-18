@@ -5,8 +5,7 @@ import de.fhpotsdam.unfolding.*;
 import de.fhpotsdam.unfolding.geo.*;
 import de.fhpotsdam.unfolding.utils.*;
 import de.fhpotsdam.unfolding.marker.*;
-
-import de.fhpotsdam.unfolding.providers.Microsoft;
+import de.fhpotsdam.unfolding.providers.*;
 
 // //* calgary maps
 // //* 50.778155,-115.039215,51.322030,-113.670044
@@ -21,6 +20,9 @@ import de.fhpotsdam.unfolding.providers.Microsoft;
 UnfoldingMap map;
 MarkerManager<Marker> markerManager;
 Location currentMaps = new Location(52.5f, -113.5f);
+AbstractMapProvider provider1;
+AbstractMapProvider provider2;
+AbstractMapProvider provider3;
 
 Table truck_rawdata;
 Truck[] truck_data;
@@ -29,9 +31,25 @@ DateTimeFormatter date_format = DateTimeFormatter.ofPattern("dd-MM-yy");
 DateTimeFormatter ldt_string_format = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM);
 
 LocalDateTime time_units = LocalDateTime.of(LocalDate.parse("14-03-16", date_format), LocalTime.parse("00:00:00"));
+int timeSpeed = 1;
+int tmpSpeed = 0;
 
-float rotateZ = (float) 0;
-float rotateVelocityZ = 0.003f;
+// float rotateZ = (float) 0;
+// float rotateVelocityZ = 0.003f;
+
+int finishODCount = 0;
+
+long ODTime = 0;
+float ODTimeMax = 0;
+float ODTimeMin = 0;
+// float ODTimeAvg = 0;
+double ODTimeAvg = 0;
+
+double ODDist = 0;
+float ODDistMax = 0;
+float ODDistMin = 0;
+// float ODDistAvg = 0;
+double ODDistAvg = 0;
 
 
 void setup()
@@ -41,8 +59,13 @@ void setup()
     // frameRate(30);
     noStroke();
 
+    //? set maps providers
+    provider1 = new Microsoft.RoadProvider();
+    provider2 = new EsriProvider.WorldStreetMap();
+    provider3 = new StamenMapProvider.Toner();
+
     //? maps init
-    map = new UnfoldingMap(this, 0, 0, 1200, 900, new Microsoft.RoadProvider());
+    map = new UnfoldingMap(this, 0, 0, 1200, 900, provider1);
     map.zoomAndPanTo(currentMaps, 6);
 
     MapUtils.createDefaultEventDispatcher(this, map);
@@ -50,11 +73,12 @@ void setup()
 
     //? data init
     truck_rawdata = loadTable("truck1week.csv", "header");
-    println(truck_rawdata.getRowCount() + " total rows in table");
+    // println(truck_rawdata.getRowCount() + " total rows in table");
 
     truck_data = new Truck[truck_rawdata.getRowCount()];
 
     int index = 0;
+    // float max_duration = 0;
     for (TableRow row : truck_rawdata.rows()) 
     {
         //? get origin lat-long
@@ -72,8 +96,11 @@ void setup()
         Long trans_duration_minutes = Duration.between(time_orig, time_dest).toMinutes();
         
         truck_data[index++] = new Truck(lat_orig, lng_orig, lat_dest, lng_dest, time_orig, time_dest, trans_duration_minutes);
+        
+        // max_duration = max(max_duration, trans_duration_minutes);
     }
     println("finish process the data");
+    // print("max duration:" + max_duration);
 
     // Truck first_truck = new Truck(lat_orig, lng_orig, lat_dest, lng_dest, trans_duration_minutes);
     // println(truck_data[0].origin.Latitude);
@@ -126,31 +153,85 @@ void draw()
                 markerManager.removeMarker(truck_data[i].endMarker);
                 markerManager.removeMarker(truck_data[i].connectionMarker);
                 truck_data[i].setAlreadyStoppedFlag();
+
+                //? data collection
+                finishODCount++;
+
+                // double distLoc = GeoUtils.getDistance(truck_data[i].originLocation, truck_data[i].destinationLocation);
+                // if (distLoc != Double.NaN)
+                // {
+                //     ODDist += distLoc;
+                //     ODDistAvg = ODDist / finishODCount;
+                // }
+                ODDist = GeoUtils.getDistance(truck_data[i].originLocation, truck_data[i].destinationLocation);
+                ODDistMax = max(ODDistMax, (long)ODDist);
+                ODDistMin = min(ODDistMin, (long)ODDist);
+                ODDistAvg = (ODDistMax + ODDistMin) / 2;
+
+                ODTime += truck_data[i].timeUsed;
+                ODTimeAvg = ODTime / finishODCount;
+                // ODTime = truck_data[i].timeUsed;
+                // ODTimeMax = max(ODTimeMax, ODTime);
+                // ODTimeMin = max(ODTimeMin, ODTime);
+                // ODTimeAvg = (ODTimeMax + ODTimeMin) / 2;
             }
             else if (truck_data[i].alreadyStarted && !truck_data[i].alreadyStopped)
             {
                 truck_data[i].connectionMarker.updateMarker(end_elapsed);
             }
         }
-
         //? update maps
         map.draw();
 
         popMatrix();
 
         //? update time units
-        time_units = time_units.plusMinutes(1);
+        time_units = time_units.plusMinutes(timeSpeed);
         // println(time_units);
 
-        //? draw time on screen
+        //? draw time on top-left screen
         String currentTime = time_units.format(ldt_string_format);
         fill(170,150);
         rect(10, 5, textWidth(currentTime) + 20, 20);
         fill(255);
         text(currentTime, 20, 20);
-    // }
 
+        //? draw summary on top-right screen
+        // summary include 'finish OD count', 'avg OD time', 'avg OD distance'
+        if (finishODCount != 0)
+        {
+            // println(avgODDist / finishODCount);
+            String summaryDetail = "Finish Transports: " + finishODCount + "\nAvg Distance: " + ODDistAvg + " Km\nAvg Time Used: " + ODTimeAvg + " min";
+            fill(170,150);
+            rect(width - 40 - textWidth(summaryDetail), 5, textWidth(summaryDetail) + 25, (12 + 4) * 3);
+            fill(255);
+            text(summaryDetail, width - 25 - textWidth(summaryDetail), 20);
+        }
+    // }
     // rotateZ += rotateVelocityZ;
+}
+
+void clearAllData()
+{
+    time_units = LocalDateTime.of(LocalDate.parse("14-03-16", date_format), LocalTime.parse("00:00:00"));
+    markerManager.clearMarkers();
+
+    for (int i = 0; i < truck_data.length; i++)
+    {
+        truck_data[i].clearFlags();
+    }
+    
+    finishODCount = 0;
+    ODTime = 0;
+    ODTimeMax = 0;
+    ODTimeMin = 0;
+    ODTimeAvg = 0;
+    ODDist = 0;
+    ODDistMax = 0;
+    ODDistMin = 0;
+    ODDistAvg = 0;
+
+    timeSpeed = 1;
 }
 
 void mouseMoved() 
@@ -164,6 +245,47 @@ void mouseMoved()
         for (Marker marker : markerManager.getMarkers()) {
             marker.setSelected(false);
         }
+    }
+}
+
+void keyPressed()
+{
+    if (key == 'w')
+    {  
+        timeSpeed += 1; 
+    } 
+    else if (key == 's')
+    {  
+        if (timeSpeed > 0)
+            timeSpeed -= 1;
+    }
+    else if (key == ' ')
+    {
+        if (timeSpeed > 0)
+        {
+            tmpSpeed = timeSpeed;
+            timeSpeed = 0;
+        }
+        else
+        {
+            timeSpeed = tmpSpeed;
+        }
+    }
+    else if (key == 'c')
+    {
+        clearAllData();
+    }
+    else if (key == '1')
+    {
+        map.mapDisplay.setProvider(provider1);
+    }
+    else if (key == '2')
+    {
+        map.mapDisplay.setProvider(provider2);
+    }
+    else if (key == '3')
+    {
+        map.mapDisplay.setProvider(provider3);
     }
 }
 

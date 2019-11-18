@@ -1,6 +1,17 @@
-./out
-./.vscode
-*.xlsx
-*.csv
-*.pdf
 
+# Created by https://www.gitignore.io/api/processing
+# Edit at https://www.gitignore.io/?templates=processing
+
+### Processing ###
+.DS_Store
+applet
+application.linux-arm64
+application.linux-armv6hf
+application.linux32
+application.linux64
+application.windows32
+application.windows64
+application.macosx
+out
+
+# End of https://www.gitignore.io/api/processing

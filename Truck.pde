@@ -35,7 +35,7 @@ class Truck {
 
         markerColor = color(random(255),random(255), random(255), 120);
         // markerSize = 2;
-        markerSize = map(timeUsed, 0, 10000, 2, 4);
+        markerSize = map(timeUsed, 0, 23550, 2, 4); //? max duration from data
 
         startMarker = new customPointMarker(originLocation, markerColor, time_orig.format(ldt_string_format), time_dest.format(ldt_string_format), timeUsed, true);
         endMarker = new customPointMarker(destinationLocation, markerColor, time_orig.format(ldt_string_format), time_dest.format(ldt_string_format), timeUsed, false);
@@ -81,6 +81,12 @@ class Truck {
     void setAlreadyStoppedFlag()
     {
         alreadyStopped = true;
+    }
+
+    void clearFlags()
+    {
+        alreadyStarted = false;
+        alreadyStopped = false;
     }
 };
 

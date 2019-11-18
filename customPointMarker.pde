@@ -50,8 +50,7 @@ public class customPointMarker extends SimplePointMarker
             pg.stroke(m);
             pg.rect(x + strokeWeight / 2, y - fontSize + strokeWeight / 2 - space, pg.textWidth(markerDetail) + space * 1.5f, (fontSize + space) * 3);
             pg.fill(255, 255, 255);
-            pg.text(markerDetail, Math.round(x + space * 0.75f + strokeWeight / 2), 
-            Math.round(y + strokeWeight / 2 - space * 0.75f));
+            pg.text(markerDetail, Math.round(x + space * 0.75f + strokeWeight / 2), Math.round(y + strokeWeight / 2 - space * 0.75f));
         }
 
         pg.popStyle();
